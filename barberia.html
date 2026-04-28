@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>BarberGol</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<!-- ██████████████████████████████████████████████
+     PASO 1 — REEMPLAZÁ ESTOS VALORES CON LOS TUYOS
+     (instrucciones al final del archivo)
+     ██████████████████████████████████████████████ -->
+<script>
+  const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyDVFTCx3Hf9ZWZ6cdptjpbrIxtZPCEGGrw",
+    authDomain:        "barbergol.firebaseapp.com",
+    databaseURL:       "https://barbergol-default-rtdb.firebaseio.com",
+    projectId:         "barbergol",
+    storageBucket:     "barbergol.firebasestorage.app",
+    messagingSenderId: "780032384452",
+    appId:             "1:780032384452:web:94bf45fcadf7198d6dd891"
+  };
+</script>
+
+<!-- Firebase SDK (compat version, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+:root{
+  --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--card:#161616;
+  --border:#2a2a2a;--gold:#d4a843;--gold2:#f0c060;
+  --red:#e03e3e;--green:#2ecc71;--blue:#4a9eff;
+  --purple:#b48eff;--text:#f0ede8;--muted:#888;
+  --fd:'Bebas Neue',serif;--fb:'DM Sans',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* ── PANTALLA DE CONFIGURACIÓN FIREBASE ── */
+#cfg-screen{
+  position:fixed;inset:0;background:var(--bg);display:flex;
+  align-items:center;justify-content:center;z-index:9500;padding:20px;
+}
+.cfg-box{
+  background:var(--card);border:2px solid var(--gold);border-radius:16px;
+  padding:32px;width:100%;max-width:540px;
+}
+.cfg-title{font-family:var(--fd);font-size:26px;color:var(--gold);margin-bottom:6px;letter-spacing:1px}
+.cfg-sub{color:var(--muted);font-size:13px;margin-bottom:22px;line-height:1.6}
+.cfg-field{margin-bottom:12px}
+.cfg-field label{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.7px;font-weight:600;margin-bottom:4px}
+.cfg-field input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:7px;font-family:monospace;font-size:13px;outline:none;transition:border-color .15s}
+.cfg-field input:focus{border-color:var(--gold)}
+.cfg-field input.error{border-color:var(--red)}
+.cfg-btn{
+  width:100%;background:var(--gold);color:#000;border:none;padding:12px;
+  border-radius:8px;font-family:var(--fb);font-size:15px;font-weight:700;
+  cursor:pointer;margin-top:8px;transition:background .15s
+}
+.cfg-btn:hover{background:var(--gold2)}
+.cfg-err{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+
+/* ── LOADING ── */
+#loading-screen{
+  position:fixed;inset:0;background:var(--bg);display:none;
+  align-items:center;justify-content:center;z-index:9400;flex-direction:column;gap:16px
+}
+.spinner{
+  width:40px;height:40px;border:3px solid var(--border);
+  border-top-color:var(--gold);border-radius:50%;
+  animation:spin .8s linear infinite
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-family:var(--fd);font-size:22px;color:var(--gold);letter-spacing:2px}
+
+/* ── LOGIN ── */
+#login-screen{
+  position:fixed;inset:0;background:var(--bg);display:none;
+  align-items:center;justify-content:center;z-index:9300
+}
+.login-box{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:40px 36px;width:100%;max-width:380px;text-align:center
+}
+.login-logo{font-family:var(--fd);font-size:42px;letter-spacing:3px;color:var(--gold);margin-bottom:4px}
+.login-logo span{color:var(--text)}
+.login-sub{color:var(--muted);font-size:12px;letter-spacing:1px;margin-bottom:28px}
+.lf{margin-bottom:14px;text-align:left}
+.lf label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;display:block;margin-bottom:5px}
+.lf input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:11px 14px;border-radius:8px;font-family:var(--fb);font-size:14px;outline:none;transition:border-color .15s}
+.lf input:focus{border-color:var(--gold)}
+.login-btn{width:100%;background:var(--gold);color:#000;border:none;padding:12px;border-radius:8px;
+  font-family:var(--fb);font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;transition:background .15s}
+.login-btn:hover{background:var(--gold2)}
+.login-err{color:var(--red);font-size:12px;margin-top:10px;min-height:16px}
+.ri{display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:6px;padding:4px 10px;font-size:12px;color:var(--muted)}
+.ra{color:var(--gold)!important;border-color:var(--gold)!important}
+.re{color:var(--blue)!important;border-color:var(--blue)!important}
+
+/* ── SYNC INDICATOR ── */
+.sync-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--green);
+  display:inline-block;animation:pulse 2s infinite
+}
+.sync-dot.off{background:var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── HEADER ── */
+.header{
+  background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;
+  display:flex;align-items:center;justify-content:space-between;height:58px;
+  position:sticky;top:0;z-index:100
+}
+.header-logo{font-family:var(--fd);font-size:26px;letter-spacing:2px;color:var(--gold)}
+.header-logo span{color:var(--text)}
+.header-nav{display:flex;gap:3px}
+.nb{background:none;border:none;color:var(--muted);padding:7px 13px;border-radius:6px;cursor:pointer;
+  font-family:var(--fb);font-size:13px;font-weight:500;transition:all .15s}
+.nb:hover{background:var(--bg3);color:var(--text)}
+.nb.active{background:var(--gold);color:#000;font-weight:700}
+.hr{display:flex;align-items:center;gap:10px}
+.hd{color:var(--muted);font-size:11px}
+.lo-btn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);padding:5px 10px;
+  border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--fb);transition:all .15s}
+.lo-btn:hover{border-color:var(--red);color:var(--red)}
+
+/* ── LAYOUT ── */
+.main{padding:20px;max-width:1200px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.ct{font-family:var(--fd);font-size:20px;letter-spacing:1px;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.col{display:flex;flex-direction:column;gap:16px}
+
+/* ── FORM ── */
+.fr{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:14px}
+.fi{display:flex;flex-direction:column;gap:5px}
+.fi label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+.fi input,.fi select{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:7px;font-family:var(--fb);font-size:14px;width:100%;
+  transition:border-color .15s;outline:none}
+.fi input:focus,.fi select:focus{border-color:var(--gold)}
+.fi select option{background:var(--bg3)}
+
+/* ── BUTTONS ── */
+.btn{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-family:var(--fb);
+  font-size:13px;font-weight:600;letter-spacing:.3px;transition:all .15s;
+  display:inline-flex;align-items:center;gap:6px}
+.bp{background:var(--gold);color:#000}.bp:hover{background:var(--gold2);transform:translateY(-1px)}
+.bd{background:#2a1010;color:var(--red);border:1px solid #3a1010}.bd:hover{background:var(--red);color:#fff}
+.bg{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.bg:hover{border-color:var(--gold);color:var(--gold)}
+.bs{padding:4px 8px;font-size:11px}
+
+/* ── TABLE ── */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:9px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #1d1d1d;font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.bc{background:#1a2a0d;color:var(--green)}.bt{background:#0d1a2a;color:var(--blue)}
+.bd2{background:#2a1a0d;color:var(--gold)}.bw{background:#1a0d2a;color:var(--purple)}
+.bb-0{background:#2a1a0d;color:#d4a843}
+.bb-1{background:#1a0d2a;color:#b48eff}
+.bb-2{background:#0d2a1a;color:#2ecc71}
+.bb-3{background:#0d1a2a;color:#4a9eff}
+.bb-4{background:#2a0d1a;color:#ff6b9d}
+.bb-5{background:#1a2a0d;color:#a8e063}
+.warn-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:800;padding:16px}
+.warn-overlay.open{display:flex}
+.warn-box{background:var(--card);border:2px solid var(--red);border-radius:14px;padding:28px;max-width:380px;width:100%;text-align:center}
+.warn-icon{font-size:48px;margin-bottom:12px}
+.warn-title{font-family:var(--fd);font-size:24px;color:var(--red);letter-spacing:1px;margin-bottom:8px}
+.warn-msg{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:20px}
+.warn-btns{display:flex;gap:10px;justify-content:center}
+.warn-si{background:var(--red);color:#fff;border:none;padding:10px 24px;border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.warn-si:hover{opacity:.85}
+.warn-no{background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:10px 24px;border-radius:8px;font-family:var(--fb);font-size:14px;font-weight:700;cursor:pointer;transition:border-color .15s}
+.warn-no:hover{border-color:var(--green);color:var(--green)}
+
+/* ── STATS ── */
+.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;
+  display:flex;flex-direction:column;gap:5px}
+.sl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+.sv{font-family:var(--fd);font-size:28px;letter-spacing:1px}
+.ss{font-size:12px;color:var(--muted)}
+.cg{color:var(--gold)}.cn{color:var(--green)}.cb{color:var(--blue)}.cp{color:var(--purple)}.cr{color:var(--red)}
+
+/* ── INVENTORY ── */
+.ii{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg3);transition:border-color .15s}
+.ii:hover{border-color:var(--gold)}
+.in{flex:1;font-weight:500}
+.is{min-width:36px;text-align:center;padding:3px 7px;border-radius:5px;font-weight:700;font-size:14px}
+.sok{background:#0d2a1a;color:var(--green)}.slow{background:#2a1a0d;color:orange}.sout{background:#2a0d0d;color:var(--red)}
+.ip{color:var(--muted);font-size:13px;min-width:90px;text-align:right}
+
+/* ── CIERRE ── */
+.cs{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.ch{background:var(--bg3);padding:11px 16px;font-family:var(--fd);letter-spacing:1px;font-size:16px;color:var(--gold);display:flex;align-items:center;gap:8px}
+.cb2{padding:14px 16px}
+.cr2{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.cr2:last-child{border-bottom:none;font-weight:700}
+.cr2 .label{color:var(--muted);font-size:13px}
+.cr2 .value{font-family:var(--fd);font-size:20px;letter-spacing:.5px}
+
+.lb{background:#2a1010;color:var(--red);border:1px solid #4a1010;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:#000;padding:11px 18px;
+  border-radius:8px;font-weight:700;font-size:13px;transform:translateY(60px);opacity:0;
+  transition:all .3s;z-index:9999}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.err{background:var(--red);color:#fff}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:500;padding:16px}
+.mo.open{display:flex}
+.md{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:460px;width:100%}
+.mt{font-family:var(--fd);font-size:22px;color:var(--gold);margin-bottom:16px;letter-spacing:1px}
+.ma{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+.ed{cursor:pointer}.ed:hover{text-decoration:underline;text-decoration-color:var(--gold)}
+.fb{display:flex;justify-content:space-between;align-items:center}
+.tm{color:var(--muted)}.ts{font-size:12px}
+.psc{color:var(--gold);font-size:12px}.ppc{color:var(--purple);font-size:12px}
+
+@media(max-width:700px){
+  .g2,.g3,.g4{grid-template-columns:1fr}
+  .nb{padding:6px 9px;font-size:11px}
+  .hd{display:none}
+}
+@media print{
+  .header,#page-registro,#page-historial,#page-inventario,#page-config,#page-cierremensual,.btn,.nb,.lo-btn{display:none!important}
+  #page-cierre{display:block!important}
+  body{background:#fff;color:#000}
+  .stat,.card,.cs{border:1px solid #ccc}
+}
+</style>
+</head>
+<body>
+
+<!-- ════ PANTALLA CONFIGURACIÓN FIREBASE ════ -->
+<div id="cfg-screen">
+  <div class="cfg-box">
+    <div class="cfg-title">🔥 Conectar Firebase</div>
+    <div class="cfg-sub">
+      Pegá los valores de tu proyecto Firebase aquí abajo para activar la sincronización en tiempo real.<br>
+      <strong style="color:var(--gold)">Solo necesitás hacer esto una vez.</strong>
+    </div>
+    <div class="cfg-field"><label>API Key</label><input id="fb-apiKey" placeholder="AIzaSy..." /></div>
+    <div class="cfg-field"><label>Auth Domain</label><input id="fb-authDomain" placeholder="mi-proyecto.firebaseapp.com" /></div>
+    <div class="cfg-field"><label>Database URL</label><input id="fb-databaseURL" placeholder="https://mi-proyecto-default-rtdb.firebaseio.com" /></div>
+    <div class="cfg-field"><label>Project ID</label><input id="fb-projectId" placeholder="mi-proyecto" /></div>
+    <div class="cfg-field"><label>App ID</label><input id="fb-appId" placeholder="1:123456789:web:abc..." /></div>
+    <button class="cfg-btn" onclick="guardarFirebaseConfig()">CONECTAR Y GUARDAR</button>
+    <div class="cfg-err" id="cfg-err"></div>
+    <div style="margin-top:16px;padding:12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.8">
+      📖 <strong style="color:var(--text)">¿Dónde conseguir estos valores?</strong><br>
+      Firebase Console → Tu proyecto → ⚙️ Configuración → "Tu aplicación web" → firebaseConfig
+    </div>
+  </div>
+</div>
+
+<!-- ════ LOADING ════ -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-text">BARBЕРГOL</div>
+</div>
+
+<!-- ════ LOGIN ════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">BARBER<span>GOL</span></div>
+    <div class="login-sub">SISTEMA DE GESTIÓN</div>
+    <div class="lf"><label>Usuario</label>
+      <input type="text" id="l-user" placeholder="usuario" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="lf"><label>Contraseña</label>
+      <input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="login-btn" onclick="doLogin()">INGRESAR</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app" style="display:none">
+<header class="header">
+  <div class="header-logo">BARBER<span>GOL</span></div>
+  <nav class="header-nav">
+    <button class="nb active" onclick="showPage('registro',this)">✂️ Registro</button>
+    <button class="nb" onclick="showPage('historial',this)">📋 Historial</button>
+    <button class="nb" onclick="showPage('inventario',this)">📦 Inventario</button>
+    <button class="nb" onclick="showPage('cierre',this)">💰 Cierre Día</button>
+    <button class="nb" onclick="showPage('cierremensual',this)">📆 Cierre Mes</button>
+    <button class="nb" onclick="showPage('config',this)">⚙️ Config</button>
+  </nav>
+  <div class="hr">
+    <span class="sync-dot" id="sync-dot" title="Sincronizado en tiempo real"></span>
+    <div class="hd" id="hd"></div>
+    <div class="ri" id="role-badge"></div>
+    <button class="lo-btn" onclick="doLogout()">Salir</button>
+  </div>
+</header>
+<div class="main">
+
+  <!-- REGISTRO -->
+  <div class="page active" id="page-registro">
+    <div class="col">
+      <div class="card">
+        <div class="ct">✂️ Registrar Servicio</div>
+        <div class="fr">
+          <div class="fi"><label>Barbero</label><select id="sv-barbero"></select></div>
+          <div class="fi"><label>Servicio</label><select id="sv-servicio" onchange="onServChange()"></select></div>
+          <div class="fi"><label>Precio Servicio ($)</label><input type="number" id="sv-precio" placeholder="0"/></div>
+          <div class="fi"><label>Método de Pago</label>
+            <select id="sv-pago"><option value="Efectivo">💵 Efectivo</option><option value="Transferencia">📲 Transferencia</option></select></div>
+          <div class="fi"><label>Producto adicional</label><select id="sv-producto" onchange="onProdChange()"></select></div>
+          <div class="fi"><label>Precio Producto ($)</label>
+            <input type="number" id="sv-pprod" placeholder="0" readonly
+              style="background:var(--bg);color:var(--purple);border-color:#3a2a5a;cursor:default"/></div>
+        </div>
+        <div class="fr" style="grid-template-columns:1fr auto;align-items:end">
+          <div class="fi"><label>Observaciones</label><input type="text" id="sv-obs" placeholder="Opcional..."/></div>
+          <button class="btn bp" style="height:38px" onclick="registrar()">＋ Registrar</button>
+        </div>
+      </div>
+      <div class="g4" id="stats-hoy"></div>
+      <div class="card">
+        <div class="ct fb" style="justify-content:space-between">
+          <span>📅 Servicios de Hoy</span>
+          <span id="count-hoy" class="tm ts"></span>
+        </div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>Hora</th><th>Barbero</th><th>Servicio</th>
+            <th>Precio Srv.</th><th>Producto</th><th>Precio Prod.</th>
+            <th>Total</th><th>Pago</th><th>Obs</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-hoy"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="page" id="page-historial">
+    <div class="card">
+      <div class="ct">📋 Historial Completo</div>
+      <div class="fr" style="margin-bottom:14px">
+        <div class="fi"><label>Barbero</label><select id="f-barbero" onchange="renderHistorial()"><option value="">Todos</option></select></div>
+        <div class="fi"><label>Fecha</label><input type="date" id="f-fecha" onchange="renderHistorial()"/></div>
+        <div class="fi"><label>Pago</label>
+          <select id="f-pago" onchange="renderHistorial()"><option value="">Todos</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option></select></div>
+      </div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>Fecha</th><th>Hora</th><th>Barbero</th><th>Servicio</th>
+          <th>Precio Srv.</th><th>Producto</th><th>Precio Prod.</th>
+          <th>Total</th><th>Com. Barbero</th><th>Pago</th><th></th>
+        </tr></thead>
+        <tbody id="tbody-hist"></tbody>
+      </table></div>
+      <div id="historial-balance"></div>
+    </div>
+  </div>
+
+  <!-- INVENTARIO -->
+  <div class="page" id="page-inventario">
+    <div class="col">
+      <div class="card" id="inv-add-card">
+        <div class="ct">📦 Agregar Producto</div>
+        <div class="fr" style="align-items:end">
+          <div class="fi"><label>Nombre</label><input type="text" id="inv-nombre" placeholder="Pomada Mate 100g"/></div>
+          <div class="fi"><label>Precio ($)</label><input type="number" id="inv-precio" placeholder="0"/></div>
+          <div class="fi"><label>Stock</label><input type="number" id="inv-stock" value="1"/></div>
+          <div class="fi"><label>% Com. Barbero</label><input type="number" id="inv-com" value="20"/></div>
+          <button class="btn bp" onclick="agregarProd()" style="height:38px">＋ Agregar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Stock Actual</div>
+        <div id="lista-inv" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CIERRE -->
+  <div class="page" id="page-cierre">
+    <div class="col">
+      <div class="fb" style="flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-family:var(--fd);font-size:28px;color:var(--gold)">CIERRE DEL DÍA</div>
+          <div class="tm ts" id="cierre-fecha-lbl"></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="date" id="cierre-fecha" onchange="renderCierre()"
+            style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-family:var(--fb);font-size:13px"/>
+          <button class="btn bp" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+      </div>
+      <div id="cierre-content"></div>
+    </div>
+  </div>
+
+  <!-- CIERRE MENSUAL -->
+  <div class="page" id="page-cierremensual">
+    <div class="col">
+      <div class="fb" style="flex-wrap:wrap;gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-family:var(--fd);font-size:28px;color:var(--gold)">CIERRE MENSUAL</div>
+          <div class="tm ts" id="cierrem-label"></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select id="cierrem-mes" onchange="renderCierreMensual()"
+            style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-family:var(--fb);font-size:13px"></select>
+          <select id="cierrem-anio" onchange="renderCierreMensual()"
+            style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-family:var(--fb);font-size:13px"></select>
+          <button class="btn bp" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+      </div>
+      <div id="cierrem-content"></div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="page" id="page-config">
+    <div class="col">
+      <div class="card">
+        <div class="ct">✂️ Servicios</div>
+        <div id="lista-servicios" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+        <div class="fr" style="align-items:end">
+          <div class="fi"><label>Nombre</label><input type="text" id="cfg-sv-n" placeholder="Nuevo servicio"/></div>
+          <div class="fi"><label>Precio ($)</label><input type="number" id="cfg-sv-p" placeholder="0"/></div>
+          <button class="btn bg" onclick="agregarServicio()" style="height:38px">＋</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">💈 Barberos</div>
+        <div id="lista-barberos" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+        <div class="fr" style="align-items:end">
+          <div class="fi"><label>Nombre</label><input type="text" id="cfg-b-n" placeholder="Nuevo barbero"/></div>
+          <div class="fi"><label>% Comisión</label><input type="number" id="cfg-b-c" value="50"/></div>
+          <button class="btn bg" onclick="agregarBarbero()" style="height:38px">＋</button>
+        </div>
+      </div>
+      <div class="card" id="cfg-pass-card" style="display:none">
+        <div class="ct">🔐 Cambiar Contraseñas</div>
+        <div class="fr" style="align-items:end">
+          <div class="fi"><label>Usuario</label>
+            <select id="chg-u"><option value="javier">Javier (Dueño)</option><option value="barbero">Barbero</option></select></div>
+          <div class="fi"><label>Nueva Contraseña</label><input type="password" id="chg-p" placeholder="••••••••"/></div>
+          <button class="btn bg" onclick="cambiarPass()" style="height:38px">Cambiar</button>
+        </div>
+      </div>
+      <div class="card" id="cfg-firebase-card" style="display:none">
+        <div class="ct">🔥 Firebase</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:12px">
+          Conectado a: <strong style="color:var(--green)" id="fb-project-label"></strong>
+        </div>
+        <button class="btn bd" onclick="resetFirebase()">Reconectar a otro proyecto</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="mo" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="md">
+    <div class="mt" id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div class="ma">
+      <button class="btn bg" onclick="closeModal()">Cancelar</button>
+      <button class="btn bp" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- MODAL ADVERTENCIA DOBLE REGISTRO -->
+<div class="warn-overlay" id="warn-overlay">
+  <div class="warn-box">
+    <div class="warn-icon">⚠️</div>
+    <div class="warn-title">¿DOBLE REGISTRO?</div>
+    <div class="warn-msg">Acabás de registrar un servicio hace menos de 30 segundos.<br><strong style="color:var(--text)">¿Seguro querés agregar otro corte?</strong></div>
+    <div class="warn-btns">
+      <button class="warn-no" onclick="cancelarRegistro()">✕ Cancelar</button>
+      <button class="warn-si" onclick="confirmarRegistro()">✓ Sí, registrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  FIREBASE SETUP
+// ════════════════════════════════════════════════
+let db = null;
+let fbApp = null;
+let fbReady = false;
+let unsubscribers = [];
+
+function getFBConfig() {
+  // Primero intentamos el config hardcodeado al inicio del archivo
+  const hardcoded = (typeof FIREBASE_CONFIG !== 'undefined') ? FIREBASE_CONFIG : null;
+  if (hardcoded && hardcoded.apiKey && !hardcoded.apiKey.startsWith('PEGA_')) return hardcoded;
+  // Luego el guardado en localStorage
+  const saved = localStorage.getItem('bg_fb_config');
+  return saved ? JSON.parse(saved) : null;
+}
+
+function initFirebase(config) {
+  try {
+    if (fbApp) { try { fbApp.delete(); } catch(e){} }
+    fbApp = firebase.initializeApp(config, 'barberia_' + Date.now());
+    db = firebase.database(fbApp);
+    fbReady = true;
+    document.getElementById('sync-dot')?.classList.remove('off');
+    document.getElementById('fb-project-label').textContent = config.projectId;
+    return true;
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    fbReady = false;
+    return false;
+  }
+}
+
+function guardarFirebaseConfig() {
+  const config = {
+    apiKey:            document.getElementById('fb-apiKey').value.trim(),
+    authDomain:        document.getElementById('fb-authDomain').value.trim(),
+    databaseURL:       document.getElementById('fb-databaseURL').value.trim(),
+    projectId:         document.getElementById('fb-projectId').value.trim(),
+    storageBucket:     document.getElementById('fb-projectId').value.trim() + '.appspot.com',
+    messagingSenderId: '000000000000',
+    appId:             document.getElementById('fb-appId').value.trim(),
+  };
+  const err = document.getElementById('cfg-err');
+  if (!config.apiKey || !config.databaseURL || !config.projectId) {
+    err.textContent = '⚠️ API Key, Database URL y Project ID son obligatorios';
+    return;
+  }
+  if (!config.databaseURL.startsWith('https://')) {
+    err.textContent = '⚠️ Database URL debe empezar con https://';
+    return;
+  }
+  err.textContent = '';
+  localStorage.setItem('bg_fb_config', JSON.stringify(config));
+  document.getElementById('cfg-screen').style.display = 'none';
+  startApp(config);
+}
+
+function resetFirebase() {
+  localStorage.removeItem('bg_fb_config');
+  location.reload();
+}
+
+// ════════════════════════════════════════════════
+//  ESTADO LOCAL (fallback + cache)
+// ════════════════════════════════════════════════
+let state = {
+  barberos:  [{ nombre:'Daniel', comision:50 }, { nombre:'Waly', comision:50 }],
+  servicios: [
+    { nombre:'Corte', precio:14000 }, { nombre:'Degradé', precio:14000 },
+    { nombre:'Corte y Barba', precio:16000 }, { nombre:'Barba', precio:8000 },
+    { nombre:'Delineado', precio:5000 }, { nombre:'Afeitado Clásico', precio:10000 },
+  ],
+  inventario: [
+    { id:'p1', nombre:'Pomada Mate', precio:12000, stock:5, comision:20 },
+    { id:'p2', nombre:'Cera Brillo', precio:10000, stock:3, comision:20 },
+    { id:'p3', nombre:'Shampoo Anticaspa', precio:8000, stock:8, comision:20 },
+  ],
+  ventas: [],
+};
+
+// ════════════════════════════════════════════════
+//  FIREBASE LISTENERS (tiempo real)
+// ════════════════════════════════════════════════
+function setupListeners() {
+  if (!db) return;
+  // barberos
+  db.ref('barberos').on('value', snap => {
+    const v = snap.val();
+    if (v) { state.barberos = Array.isArray(v) ? v : Object.values(v); }
+    if (currentPage === 'registro') renderRegistro();
+    if (currentPage === 'config')   renderConfig();
+    if (currentPage === 'historial') renderHistorial();
+  });
+  // servicios
+  db.ref('servicios').on('value', snap => {
+    const v = snap.val();
+    if (v) state.servicios = Array.isArray(v) ? v : Object.values(v);
+    populateServiciosSelect();
+    if (currentPage === 'config') renderConfig();
+  });
+  // inventario
+  db.ref('inventario').on('value', snap => {
+    const v = snap.val();
+    state.inventario = v ? Object.values(v) : [];
+    populateProductosSelect();
+    if (currentPage === 'inventario') renderInventario();
+  });
+  // ventas — escuchamos solo los últimos 500 para performance
+  db.ref('ventas').on('value', snap => {
+    const v = snap.val();
+    state.ventas = v ? Object.values(v).sort((a,b) => a.id - b.id) : [];
+    if (currentPage === 'registro')  { renderStatsHoy(); renderTablaHoy(); }
+    if (currentPage === 'historial')   renderHistorial();
+    if (currentPage === 'cierre')      renderCierre();
+  });
+}
+
+function fbSet(path, data)    { return db ? db.ref(path).set(data) : Promise.resolve(); }
+function fbPush(path, data)   { return db ? db.ref(path).push(data) : Promise.resolve(); }
+function fbRemove(path)       { return db ? db.ref(path).remove()  : Promise.resolve(); }
+function fbUpdate(path, data) { return db ? db.ref(path).update(data) : Promise.resolve(); }
+
+// Guardar colecciones completas
+function saveColeccion(nombre, arr) {
+  if (!db) return;
+  // Convertimos array a objeto con índice como key
+  const obj = {};
+  arr.forEach((item, i) => obj[i] = item);
+  fbSet(nombre, obj);
+}
+
+// ════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════
+const DEFAULT_USERS = {
+  javier:  { pass:'barbergol', role:'admin',    label:'👑 Javier' },
+  barbero: { pass:'1234',      role:'empleado', label:'✂️ Barbero' },
+};
+let currentUser = null;
+let currentPage = 'registro';
+
+function getUsers() {
+  if (!db) return DEFAULT_USERS;
+  // Los users se guardan en localStorage para no necesitar Firebase para autenticar
+  try { const u = localStorage.getItem('bg_users'); return u ? JSON.parse(u) : DEFAULT_USERS; } catch(e) { return DEFAULT_USERS; }
+}
+function saveUsers(u) { localStorage.setItem('bg_users', JSON.stringify(u)); }
+function isAdmin() { return currentUser?.role === 'admin'; }
+
+function doLogin() {
+  const usr = document.getElementById('l-user').value.trim().toLowerCase();
+  const pwd = document.getElementById('l-pass').value;
+  const users = getUsers();
+  const found = users[usr];
+  const err = document.getElementById('login-err');
+  if (!found || found.pass !== pwd) {
+    err.textContent = '⚠️ Usuario o contraseña incorrectos';
+    document.getElementById('l-pass').value = '';
+    setTimeout(() => err.textContent = '', 3000); return;
+  }
+  currentUser = { username: usr, role: found.role, label: found.label };
+  localStorage.setItem('bg_session', JSON.stringify(currentUser));
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  applyRoleUI();
+  setupListeners();
+  init();
+}
+
+function doLogout() {
+  currentUser = null;
+  localStorage.removeItem('bg_session');
+  localStorage.removeItem('bg_users'); // reset users cache on logout
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('l-user').value = '';
+  document.getElementById('l-pass').value = '';
+}
+
+function applyRoleUI() {
+  const b = document.getElementById('role-badge');
+  b.textContent = currentUser.label;
+  b.className = 'ri ' + (isAdmin() ? 'ra' : 're');
+  document.getElementById('cfg-pass-card').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('cfg-firebase-card').style.display = isAdmin() ? 'block' : 'none';
+}
+
+function cambiarPass() {
+  if (!isAdmin()) return;
+  const usr = document.getElementById('chg-u').value;
+  const pwd = document.getElementById('chg-p').value.trim();
+  if (!pwd || pwd.length < 4) { toast('⚠️ Mínimo 4 caracteres', 1); return; }
+  const users = getUsers(); users[usr].pass = pwd; saveUsers(users);
+  document.getElementById('chg-p').value = '';
+  toast('✓ Contraseña actualizada');
+}
+
+// ════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════
+function today()   { return new Date().toISOString().split('T')[0]; }
+function nowTime() { return new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }); }
+function fmt(n)    { return '$ ' + Number(n||0).toLocaleString('es-AR', { minimumFractionDigits:0 }); }
+function uid()     { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = isErr ? 'show err' : 'show';
+  setTimeout(() => t.className = '', 2500);
+}
+
+function showPage(p, btn) {
+  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(e => e.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  if (btn) btn.classList.add('active');
+  currentPage = p;
+  if (p === 'historial')      renderHistorial();
+  if (p === 'cierremensual') { initCierreMensualSelects(); renderCierreMensual(); }
+  if (p === 'cierre')     renderCierre();
+  if (p === 'inventario') renderInventario();
+  if (p === 'config')     renderConfig();
+  if (p === 'registro')   renderRegistro();
+}
+
+function init() {
+  updateClock(); setInterval(updateClock, 30000);
+  const t = today();
+  document.getElementById('f-fecha').value = t;
+  document.getElementById('cierre-fecha').value = t;
+  rebuildBarbFilter();
+  renderRegistro();
+}
+
+function updateClock() {
+  const n = new Date();
+  document.getElementById('hd').textContent =
+    n.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' }) +
+    ' — ' + n.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ════════════════════════════════════════════════
+//  SELECTS
+// ════════════════════════════════════════════════
+function populateServiciosSelect() {
+  const s = document.getElementById('sv-servicio'); if(!s) return;
+  const cur = s.value;
+  s.innerHTML = state.servicios.map(sv => `<option value="${sv.nombre}">${sv.nombre}</option>`).join('');
+  if (cur) s.value = cur; onServChange();
+}
+function populateProductosSelect() {
+  const s = document.getElementById('sv-producto'); if(!s) return;
+  const cur = s.value;
+  s.innerHTML = '<option value="">— Ninguno —</option>' +
+    state.inventario.filter(p => p.stock > 0).map(p =>
+      `<option value="${p.id}">${p.nombre} — ${fmt(p.precio)}</option>`).join('');
+  if (cur) s.value = cur; onProdChange();
+}
+function populateBarberoSelect(id) {
+  const s = document.getElementById(id); if(!s) return;
+  const cur = s.value;
+  s.innerHTML = state.barberos.map(b => `<option value="${b.nombre}">${b.nombre}</option>`).join('');
+  if (cur) s.value = cur;
+}
+function onServChange() {
+  const sv = document.getElementById('sv-servicio')?.value;
+  const f = state.servicios.find(s => s.nombre === sv);
+  if (f) document.getElementById('sv-precio').value = f.precio;
+}
+function onProdChange() {
+  const id = document.getElementById('sv-producto')?.value;
+  const inp = document.getElementById('sv-pprod');
+  if (!id) { if(inp) inp.value = ''; return; }
+  const p = state.inventario.find(p => String(p.id) === String(id));
+  if (inp) inp.value = p ? p.precio : '';
+}
+function rebuildBarbFilter() {
+  const fb = document.getElementById('f-barbero'); if(!fb) return;
+  const cur = fb.value;
+  fb.innerHTML = '<option value="">Todos</option>' +
+    state.barberos.map(b => `<option value="${b.nombre}">${b.nombre}</option>`).join('');
+  if (cur) fb.value = cur;
+}
+
+// ════════════════════════════════════════════════
+//  REGISTRAR SERVICIO
+// ════════════════════════════════════════════════
+// Control de doble registro
+let ultimoRegistro = 0;
+let ventaPendiente = null;
+
+function registrar() {
+  const barbero  = document.getElementById('sv-barbero').value;
+  const servicio = document.getElementById('sv-servicio').value;
+  const precio   = parseFloat(document.getElementById('sv-precio').value) || 0;
+  const pago     = document.getElementById('sv-pago').value;
+  const prodId   = document.getElementById('sv-producto').value;
+  const obs      = document.getElementById('sv-obs').value;
+  if (!barbero || !servicio || !precio) { toast('⚠️ Completá los campos obligatorios', 1); return; }
+
+  const barb = state.barberos.find(b => b.nombre === barbero);
+  const cp = barb ? barb.comision : 50;
+
+  const venta = {
+    id: Date.now(), fecha: today(), hora: nowTime(),
+    barbero, servicio, precio, pago, obs,
+    comisionBarbero: precio * cp / 100,
+    comisionLocal:   precio * (100 - cp) / 100,
+    productoId: null, productoNombre: '', productoPrecio: 0,
+    productoComisionBarbero: 0, productoComisionLocal: 0,
+  };
+
+  if (prodId) {
+    const prod = state.inventario.find(p => String(p.id) === String(prodId));
+    if (prod) {
+      if (prod.stock <= 0) { toast('⚠️ Sin stock de ese producto', 1); return; }
+      prod.stock--;
+      fbSet('inventario/' + prod.id, prod);
+      venta.productoId = prod.id;
+      venta.productoNombre = prod.nombre;
+      venta.productoPrecio = prod.precio;
+      venta.productoComisionBarbero = prod.precio * prod.comision / 100;
+      venta.productoComisionLocal   = prod.precio * (100 - prod.comision) / 100;
+    }
+  }
+
+  // Advertencia si registraron otro servicio en los últimos 30 segundos
+  const ahora = Date.now();
+  if (ultimoRegistro && (ahora - ultimoRegistro) < 30000) {
+    ventaPendiente = venta;
+    document.getElementById('warn-overlay').classList.add('open');
+    return;
+  }
+
+  ejecutarRegistro(venta);
+}
+
+function ejecutarRegistro(venta) {
+  fbSet('ventas/' + venta.id, venta).then(() => toast('✓ Servicio registrado'));
+  ultimoRegistro = Date.now();
+  document.getElementById('sv-obs').value = '';
+  document.getElementById('sv-producto').value = ''; onProdChange();
+}
+
+function confirmarRegistro() {
+  document.getElementById('warn-overlay').classList.remove('open');
+  if (ventaPendiente) { ejecutarRegistro(ventaPendiente); ventaPendiente = null; }
+}
+
+function cancelarRegistro() {
+  document.getElementById('warn-overlay').classList.remove('open');
+  ventaPendiente = null;
+  toast('✓ Registro cancelado');
+}
+
+// ════════════════════════════════════════════════
+//  RENDER REGISTRO
+// ════════════════════════════════════════════════
+function renderRegistro() {
+  populateBarberoSelect('sv-barbero');
+  populateServiciosSelect();
+  populateProductosSelect();
+  renderStatsHoy();
+  renderTablaHoy();
+}
+
+function renderStatsHoy() {
+  const h = today(), vh = state.ventas.filter(v => v.fecha === h);
+  const total = vh.reduce((s,v) => s + v.precio + v.productoPrecio, 0);
+  const efec  = vh.filter(v => v.pago==='Efectivo').reduce((s,v) => s + v.precio + v.productoPrecio, 0);
+  const trsf  = vh.filter(v => v.pago==='Transferencia').reduce((s,v) => s + v.precio + v.productoPrecio, 0);
+  const prods = vh.reduce((s,v) => s + v.productoPrecio, 0);
+  document.getElementById('stats-hoy').innerHTML = `
+    <div class="stat"><div class="sl">💰 Total Día</div><div class="sv cg">${fmt(total)}</div><div class="ss">${vh.length} servicio${vh.length!==1?'s':''}</div></div>
+    <div class="stat"><div class="sl">💵 Efectivo</div><div class="sv cn">${fmt(efec)}</div><div class="ss">En caja</div></div>
+    <div class="stat"><div class="sl">📲 Transferencias</div><div class="sv cb">${fmt(trsf)}</div><div class="ss">A acreditar</div></div>
+    <div class="stat"><div class="sl">📦 Productos</div><div class="sv cp">${fmt(prods)}</div><div class="ss">${vh.filter(v=>v.productoPrecio>0).length} vendidos</div></div>`;
+}
+
+function renderTablaHoy() {
+  const h = today(), vh = state.ventas.filter(v => v.fecha === h).slice().reverse();
+  document.getElementById('count-hoy').textContent = vh.length + ' registros';
+  document.getElementById('tbody-hoy').innerHTML = !vh.length
+    ? `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Sin servicios hoy</td></tr>`
+    : vh.map(v => `<tr>
+      <td style="color:var(--muted)">${v.hora}</td>
+      <td><span class="badge ${badgeB(v.barbero)}">${v.barbero}</span></td>
+      <td>${v.servicio}</td>
+      <td class="psc ed" onclick="editVenta(${v.id})">${fmt(v.precio)}</td>
+      <td style="color:var(--muted);font-size:12px">${v.productoNombre||'—'}</td>
+      <td class="ppc">${v.productoPrecio?fmt(v.productoPrecio):'—'}</td>
+      <td style="font-weight:600">${fmt(v.precio+v.productoPrecio)}</td>
+      <td><span class="badge ${v.pago==='Efectivo'?'bc':'bt'}">${v.pago}</span></td>
+      <td style="color:var(--muted);font-size:11px">${v.obs||'—'}</td>
+      <td>${isAdmin()
+        ? `<button class="btn bd bs" onclick="eliminarVenta(${v.id},false)">✕</button>`
+        : '<span class="lb">🔒</span>'}</td>
+    </tr>`).join('');
+}
+
+function badgeB(nombre) {
+  const idx = state.barberos.findIndex(b => b.nombre === nombre);
+  return 'bb-' + (idx >= 0 ? idx % 6 : 0);
+}
+
+// ════════════════════════════════════════════════
+//  HISTORIAL
+// ════════════════════════════════════════════════
+function renderHistorial() {
+  let ventas = [...state.ventas].reverse();
+  const fb = document.getElementById('f-barbero')?.value;
+  const ff = document.getElementById('f-fecha')?.value;
+  const fp = document.getElementById('f-pago')?.value;
+  if (fb) ventas = ventas.filter(v => v.barbero === fb);
+  if (ff) ventas = ventas.filter(v => v.fecha === ff);
+  if (fp) ventas = ventas.filter(v => v.pago === fp);
+
+  document.getElementById('tbody-hist').innerHTML = !ventas.length
+    ? `<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:30px">Sin registros</td></tr>`
+    : ventas.map(v => `<tr>
+      <td style="color:var(--muted)">${v.fecha}</td>
+      <td style="color:var(--muted)">${v.hora}</td>
+      <td><span class="badge ${badgeB(v.barbero)}">${v.barbero}</span></td>
+      <td>${v.servicio}</td>
+      <td class="psc">${fmt(v.precio)}</td>
+      <td style="color:var(--muted);font-size:12px">${v.productoNombre||'—'}</td>
+      <td class="ppc">${v.productoPrecio?fmt(v.productoPrecio):'—'}</td>
+      <td style="font-weight:600">${fmt(v.precio+v.productoPrecio)}</td>
+      <td style="color:var(--gold)">${fmt(v.comisionBarbero+v.productoComisionBarbero)}</td>
+      <td><span class="badge ${v.pago==='Efectivo'?'bc':'bt'}">${v.pago}</span></td>
+      <td>${isAdmin()
+        ? `<button class="btn bd bs" onclick="eliminarVenta(${v.id},true)">✕</button>`
+        : '<span class="lb">🔒</span>'}</td>
+    </tr>`).join('');
+
+  // ── BALANCE DEL HISTORIAL ──
+  const balanceEl = document.getElementById('historial-balance');
+  if (!ventas.length) { balanceEl.innerHTML = ''; return; }
+
+  const totalGeneral = ventas.reduce((s,v) => s + v.precio + v.productoPrecio, 0);
+  const totalEfectivo = ventas.filter(v=>v.pago==='Efectivo').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+  const totalTransf   = ventas.filter(v=>v.pago==='Transferencia').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+  const totalComBarberos = ventas.reduce((s,v)=>s+v.comisionBarbero+v.productoComisionBarbero,0);
+  const totalBarberia = totalGeneral - totalComBarberos;
+
+  const resBarberos = state.barberos.map(b => {
+    const vs = ventas.filter(v => v.barbero === b.nombre);
+    if (!vs.length) return null;
+    const recaudado = vs.reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+    const comision  = vs.reduce((s,v)=>s+v.comisionBarbero+v.productoComisionBarbero,0);
+    return { nombre: b.nombre, recaudado, comision, servicios: vs.length };
+  }).filter(Boolean);
+
+  balanceEl.innerHTML = `
+    <div style="margin-top:20px;border-top:2px solid var(--gold);padding-top:16px">
+      <div style="font-family:var(--fd);font-size:18px;color:var(--gold);letter-spacing:1px;margin-bottom:12px">
+        📊 BALANCE DEL PERÍODO FILTRADO
+      </div>
+      <div class="g3" style="margin-bottom:14px">
+        <div class="stat"><div class="sl">💰 Total Recaudado</div><div class="sv cg">${fmt(totalGeneral)}</div><div class="ss">${ventas.length} servicios</div></div>
+        <div class="stat"><div class="sl">🏪 Para la Barbería</div><div class="sv cn">${fmt(totalBarberia)}</div><div class="ss">Después de comisiones</div></div>
+        <div class="stat"><div class="sl">✂️ Total Barberos</div><div class="sv cp">${fmt(totalComBarberos)}</div><div class="ss">Suma de comisiones</div></div>
+      </div>
+      <div class="g2" style="margin-bottom:14px">
+        <div class="stat"><div class="sl">💵 Efectivo</div><div class="sv" style="color:var(--green)">${fmt(totalEfectivo)}</div></div>
+        <div class="stat"><div class="sl">📲 Transferencias</div><div class="sv cb">${fmt(totalTransf)}</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${resBarberos.map(b => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;
+          border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="badge ${badgeB(b.nombre)}" style="font-size:13px">${b.nombre}</span>
+            <span style="color:var(--muted);font-size:12px">${b.servicios} servicio${b.servicios!==1?'s':''}</span>
+          </div>
+          <div style="display:flex;gap:24px;align-items:center">
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Recaudó</div>
+              <div style="font-family:var(--fd);font-size:18px;color:var(--gold)">${fmt(b.recaudado)}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Le corresponde</div>
+              <div style="font-family:var(--fd);font-size:18px;color:var(--purple)">${fmt(b.comision)}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════
+//  INVENTARIO
+// ════════════════════════════════════════════════
+function renderInventario() {
+  document.getElementById('inv-add-card').style.display = isAdmin() ? 'block' : 'none';
+  const lista = document.getElementById('lista-inv');
+  if (!state.inventario.length) {
+    lista.innerHTML = '<div class="tm" style="text-align:center;padding:30px">Sin productos</div>'; return;
+  }
+  lista.innerHTML = state.inventario.map(p => {
+    const sc = p.stock === 0 ? 'sout' : p.stock <= 2 ? 'slow' : 'sok';
+    return `<div class="ii">
+      <div class="in ${isAdmin()?'ed':''}" ${isAdmin()?`onclick="editProd('${p.id}')"`:''}>${p.nombre}</div>
+      <div class="ip ${isAdmin()?'ed':''}" ${isAdmin()?`onclick="editProd('${p.id}')"`:''}>${fmt(p.precio)}</div>
+      ${isAdmin()
+        ? `<input type="number" value="${p.comision}" min="0" max="100"
+            title="% comisión barbero"
+            style="width:58px;background:var(--bg);border:1px solid var(--border);color:var(--purple);
+            padding:3px 6px;border-radius:5px;font-size:12px;text-align:center;font-family:var(--fb)"
+            onchange="actualizarComisionProd('${p.id}', this.value)"
+            onclick="event.stopPropagation()" />
+           <span style="color:var(--muted);font-size:11px">% barb.</span>`
+        : `<span style="color:var(--muted);font-size:11px">${p.comision}% barb.</span>`
+      }
+      <div class="is ${sc}">${p.stock}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn bg bs" onclick="ajustarStock('${p.id}',1)">+</button>
+        <button class="btn bg bs" onclick="ajustarStock('${p.id}',-1)">−</button>
+        ${isAdmin() ? `<button class="btn bd bs" onclick="eliminarProd('${p.id}')">✕</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function agregarProd() {
+  if (!isAdmin()) { toast('⚠️ Solo el dueño puede hacer esto', 1); return; }
+  const nombre   = document.getElementById('inv-nombre').value.trim();
+  const precio   = parseFloat(document.getElementById('inv-precio').value) || 0;
+  const stock    = parseInt(document.getElementById('inv-stock').value) || 1;
+  const comision = parseInt(document.getElementById('inv-com').value) || 20;
+  if (!nombre || !precio) { toast('⚠️ Nombre y precio requeridos', 1); return; }
+  const id = 'p' + uid();
+  fbSet('inventario/' + id, { id, nombre, precio, stock, comision })
+    .then(() => toast('✓ Producto agregado'));
+  document.getElementById('inv-nombre').value = '';
+  document.getElementById('inv-precio').value = '';
+  document.getElementById('inv-stock').value = '1';
+}
+
+function actualizarComisionProd(id, valor) {
+  if (!isAdmin()) { toast('⚠️ Solo el dueño puede hacer esto', 1); return; }
+  const v = Math.max(0, Math.min(100, parseInt(valor) || 0));
+  fbSet('inventario/' + id + '/comision', v).then(() => toast('✓ Comisión actualizada'));
+}
+
+function ajustarStock(id, d) {
+  const p = state.inventario.find(p => String(p.id) === String(id)); if(!p) return;
+  const ns = Math.max(0, (p.stock||0) + d);
+  fbSet('inventario/' + id + '/stock', ns);
+}
+
+function eliminarProd(id) {
+  if (!isAdmin()) { toast('⚠️ Solo el dueño puede hacer esto', 1); return; }
+  if (!confirm('¿Eliminar producto?')) return;
+  fbRemove('inventario/' + id).then(() => toast('Producto eliminado'));
+}
+
+// ════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════
+function renderConfig() {
+  document.getElementById('cfg-pass-card').style.display = isAdmin() ? 'block' : 'none';
+  document.getElementById('cfg-firebase-card').style.display = isAdmin() ? 'block' : 'none';
+
+  document.getElementById('lista-servicios').innerHTML = state.servicios.map((s,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3)">
+      <div class="ed" style="flex:1" onclick="editServicioConf(${i})">${s.nombre}</div>
+      <div class="ed cg" onclick="editServicioConf(${i})">${fmt(s.precio)}</div>
+      <button class="btn bd bs" onclick="elimServicio(${i})">✕</button>
+    </div>`).join('');
+
+  document.getElementById('lista-barberos').innerHTML = state.barberos.map((b,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3)">
+      <div class="ed" style="flex:1" onclick="editBarberoConf(${i})">${b.nombre}</div>
+      <div class="ed tm ts" onclick="editBarberoConf(${i})">Comisión: ${b.comision}%</div>
+      <button class="btn bd bs" onclick="elimBarbero(${i})">✕</button>
+    </div>`).join('');
+}
+
+function agregarServicio() {
+  const nombre = document.getElementById('cfg-sv-n').value.trim();
+  const precio = parseFloat(document.getElementById('cfg-sv-p').value) || 0;
+  if (!nombre) { toast('⚠️ Nombre requerido', 1); return; }
+  const arr = [...state.servicios, { nombre, precio }];
+  saveColeccion('servicios', arr);
+  document.getElementById('cfg-sv-n').value = '';
+  document.getElementById('cfg-sv-p').value = '';
+  toast('✓ Servicio agregado');
+}
+
+function elimServicio(i) {
+  if (!confirm('¿Eliminar servicio?')) return;
+  const arr = state.servicios.filter((_,idx) => idx !== i);
+  saveColeccion('servicios', arr);
+}
+
+function agregarBarbero() {
+  const nombre   = document.getElementById('cfg-b-n').value.trim();
+  const comision = parseInt(document.getElementById('cfg-b-c').value) || 50;
+  if (!nombre) { toast('⚠️ Nombre requerido', 1); return; }
+  const arr = [...state.barberos, { nombre, comision }];
+  saveColeccion('barberos', arr);
+  document.getElementById('cfg-b-n').value = '';
+  toast('✓ Barbero agregado');
+}
+
+function elimBarbero(i) {
+  if (!confirm('¿Eliminar barbero?')) return;
+  const arr = state.barberos.filter((_,idx) => idx !== i);
+  saveColeccion('barberos', arr);
+}
+
+// ════════════════════════════════════════════════
+//  CIERRE
+// ════════════════════════════════════════════════
+function renderCierre() {
+  const fecha = document.getElementById('cierre-fecha').value || today();
+  document.getElementById('cierre-fecha-lbl').textContent =
+    new Date(fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const vd = state.ventas.filter(v => v.fecha === fecha);
+  if (!vd.length) {
+    document.getElementById('cierre-content').innerHTML =
+      `<div class="card" style="text-align:center;padding:40px;color:var(--muted)">Sin registros para esta fecha</div>`; return;
+  }
+  const totalCortes = vd.reduce((s,v) => s+v.precio, 0);
+  const totalProds  = vd.reduce((s,v) => s+v.productoPrecio, 0);
+  const total       = totalCortes + totalProds;
+  const efectivo    = vd.filter(v=>v.pago==='Efectivo').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+  const transf      = vd.filter(v=>v.pago==='Transferencia').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+  const cntT        = vd.filter(v=>v.pago==='Transferencia').length;
+
+  const rb = state.barberos.map(b => {
+    const vs = vd.filter(v => v.barbero === b.nombre);
+    const tcB = vs.reduce((s,v) => s+v.precio, 0);
+    const ccB = vs.reduce((s,v) => s+v.comisionBarbero, 0);
+    const tpB = vs.reduce((s,v) => s+v.productoPrecio, 0);
+    const cpB = vs.reduce((s,v) => s+v.productoComisionBarbero, 0);
+    return { ...b, vs, tcB, ccB, tpB, cpB, totalGanar: ccB+cpB };
+  }).filter(b => b.vs.length > 0);
+
+  document.getElementById('cierre-content').innerHTML = `
+    <div class="g4" style="margin-bottom:14px">
+      <div class="stat"><div class="sl">Total Facturado</div><div class="sv cg">${fmt(total)}</div><div class="ss">${vd.length} servicios</div></div>
+      <div class="stat"><div class="sl">💵 Efectivo en Caja</div><div class="sv cn">${fmt(efectivo)}</div><div class="ss">Debe haber en caja</div></div>
+      <div class="stat"><div class="sl">📲 Transferencias</div><div class="sv cb">${fmt(transf)}</div><div class="ss">${cntT} transf.</div></div>
+      <div class="stat"><div class="sl">📦 Productos</div><div class="sv cp">${fmt(totalProds)}</div><div class="ss">Vendidos</div></div>
+    </div>
+    <div class="cs"><div class="ch">💼 Resumen General</div>
+      <div class="cb2">
+        <div class="cr2"><span class="label">Servicios</span><span class="value cg">${fmt(totalCortes)}</span></div>
+        <div class="cr2"><span class="label">Productos</span><span class="value cp">${fmt(totalProds)}</span></div>
+        <div class="cr2"><span class="label">TOTAL</span><span class="value cg">${fmt(total)}</span></div>
+      </div>
+    </div>
+    ${rb.map(b=>`<div class="cs">
+      <div class="ch"><span class="badge ${badgeB(b.nombre)}" style="font-size:14px">${b.nombre}</span> — ${b.vs.length} servicio${b.vs.length!==1?'s':''}</div>
+      <div class="cb2">
+        <div class="cr2"><span class="label">Servicios realizados</span><span class="value">${fmt(b.tcB)}</span></div>
+        <div class="cr2"><span class="label">Comisión servicios (${b.comision}%)</span><span class="value cg">${fmt(b.ccB)}</span></div>
+        ${b.tpB>0?`<div class="cr2"><span class="label">Productos vendidos</span><span class="value cp">${fmt(b.tpB)}</span></div>
+        <div class="cr2"><span class="label">Comisión productos</span><span class="value cp">${fmt(b.cpB)}</span></div>`:''}
+        <div class="cr2" style="border-top:1px solid var(--gold);margin-top:4px;padding-top:10px">
+          <span class="label" style="color:var(--text);font-weight:700">💰 COBRAR A ${b.nombre.toUpperCase()}</span>
+          <span class="value cg" style="font-size:26px">${fmt(b.totalGanar)}</span>
+        </div>
+      </div>
+    </div>`).join('')}
+    <div class="cs"><div class="ch">📋 Detalle del Día</div>
+      <div style="padding:0"><div class="tw"><table>
+        <thead><tr><th>Hora</th><th>Barbero</th><th>Servicio</th><th>Precio Srv.</th><th>Producto</th><th>Precio Prod.</th><th>Total</th><th>Pago</th><th>Com. Barbero</th></tr></thead>
+        <tbody>${vd.map(v=>`<tr>
+          <td style="color:var(--muted)">${v.hora}</td>
+          <td><span class="badge ${badgeB(v.barbero)}">${v.barbero}</span></td>
+          <td>${v.servicio}</td>
+          <td class="psc">${fmt(v.precio)}</td>
+          <td style="color:var(--muted);font-size:12px">${v.productoNombre||'—'}</td>
+          <td class="ppc">${v.productoPrecio?fmt(v.productoPrecio):'—'}</td>
+          <td style="font-weight:600">${fmt(v.precio+v.productoPrecio)}</td>
+          <td><span class="badge ${v.pago==='Efectivo'?'bc':'bt'}">${v.pago}</span></td>
+          <td style="color:var(--gold)">${fmt(v.comisionBarbero+v.productoComisionBarbero)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div></div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════
+//  EDITAR
+// ════════════════════════════════════════════════
+let modalCallback = null;
+
+function editVenta(id) {
+  const v = state.ventas.find(v => v.id === id); if(!v) return;
+  openModal('Editar Servicio', `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="fi"><label>Barbero</label><select id="ev-b">${state.barberos.map(b=>`<option value="${b.nombre}"${b.nombre===v.barbero?' selected':''}>${b.nombre}</option>`).join('')}</select></div>
+      <div class="fi"><label>Servicio</label><select id="ev-s">${state.servicios.map(s=>`<option value="${s.nombre}"${s.nombre===v.servicio?' selected':''}>${s.nombre}</option>`).join('')}</select></div>
+      <div class="fi"><label>Precio ($)</label><input type="number" id="ev-p" value="${v.precio}"/></div>
+      <div class="fi"><label>Pago</label><select id="ev-pg"><option value="Efectivo"${v.pago==='Efectivo'?' selected':''}>Efectivo</option><option value="Transferencia"${v.pago==='Transferencia'?' selected':''}>Transferencia</option></select></div>
+      <div class="fi"><label>Observaciones</label><input type="text" id="ev-o" value="${v.obs||''}"/></div>
+    </div>`, () => {
+      const b = state.barberos.find(b => b.nombre === document.getElementById('ev-b').value);
+      const cp = b ? b.comision : 50;
+      const p = parseFloat(document.getElementById('ev-p').value) || v.precio;
+      const updated = { ...v,
+        barbero: document.getElementById('ev-b').value,
+        servicio: document.getElementById('ev-s').value,
+        precio: p, pago: document.getElementById('ev-pg').value,
+        obs: document.getElementById('ev-o').value,
+        comisionBarbero: p*cp/100, comisionLocal: p*(100-cp)/100,
+      };
+      fbSet('ventas/' + id, updated).then(() => toast('✓ Guardado'));
+  });
+}
+
+function editProd(id) {
+  if (!isAdmin()) { toast('⚠️ Solo el dueño puede hacer esto', 1); return; }
+  const p = state.inventario.find(p => String(p.id) === String(id)); if(!p) return;
+  openModal('Editar Producto', `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="fi"><label>Nombre</label><input type="text" id="ep-n" value="${p.nombre}"/></div>
+      <div class="fi"><label>Precio ($)</label><input type="number" id="ep-p" value="${p.precio}"/></div>
+      <div class="fi"><label>Stock</label><input type="number" id="ep-s" value="${p.stock}"/></div>
+      <div class="fi"><label>% Com. Barbero</label><input type="number" id="ep-c" value="${p.comision}"/></div>
+    </div>`, () => {
+      const updated = { ...p,
+        nombre: document.getElementById('ep-n').value,
+        precio: parseFloat(document.getElementById('ep-p').value)||p.precio,
+        stock:  parseInt(document.getElementById('ep-s').value)||p.stock,
+        comision: parseInt(document.getElementById('ep-c').value)||p.comision,
+      };
+      fbSet('inventario/' + id, updated).then(() => toast('✓ Guardado'));
+  });
+}
+
+function editServicioConf(i) {
+  const s = state.servicios[i];
+  openModal('Editar Servicio', `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="fi"><label>Nombre</label><input type="text" id="es-n" value="${s.nombre}"/></div>
+      <div class="fi"><label>Precio ($)</label><input type="number" id="es-p" value="${s.precio}"/></div>
+    </div>`, () => {
+      const arr = [...state.servicios];
+      arr[i] = { nombre: document.getElementById('es-n').value, precio: parseFloat(document.getElementById('es-p').value)||s.precio };
+      saveColeccion('servicios', arr); toast('✓ Guardado');
+  });
+}
+
+function editBarberoConf(i) {
+  const b = state.barberos[i];
+  openModal('Editar Barbero', `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="fi"><label>Nombre</label><input type="text" id="eb-n" value="${b.nombre}"/></div>
+      <div class="fi"><label>% Comisión</label><input type="number" id="eb-c" value="${b.comision}"/></div>
+    </div>`, () => {
+      const arr = [...state.barberos];
+      arr[i] = { nombre: document.getElementById('eb-n').value, comision: parseInt(document.getElementById('eb-c').value)||b.comision };
+      saveColeccion('barberos', arr); toast('✓ Guardado');
+  });
+}
+
+function eliminarVenta(id, isHist) {
+  if (!isAdmin()) { toast('⚠️ Solo el dueño puede eliminar', 1); return; }
+  if (!confirm('¿Eliminar este registro?')) return;
+  const v = state.ventas.find(v => v.id === id);
+  if (v && v.productoId) {
+    const prod = state.inventario.find(p => String(p.id) === String(v.productoId));
+    if (prod) fbSet('inventario/' + prod.id + '/stock', (prod.stock||0) + 1);
+  }
+  fbRemove('ventas/' + id).then(() => toast('Registro eliminado'));
+}
+
+// ════════════════════════════════════════════════
+//  MODAL
+// ════════════════════════════════════════════════
+function openModal(title, body, cb) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  modalCallback = cb;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); modalCallback = null; }
+function saveModal()  { if(modalCallback) modalCallback(); closeModal(); }
+
+// ════════════════════════════════════════════════
+//  CIERRE MENSUAL
+// ════════════════════════════════════════════════
+function initCierreMensualSelects() {
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const selMes  = document.getElementById('cierrem-mes');
+  const selAnio = document.getElementById('cierrem-anio');
+  const now = new Date();
+  const curMes  = now.getMonth();
+  const curAnio = now.getFullYear();
+
+  if (!selMes.options.length) {
+    meses.forEach((m,i) => {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = m;
+      if (i === curMes) opt.selected = true;
+      selMes.appendChild(opt);
+    });
+  }
+  if (!selAnio.options.length) {
+    for (let y = curAnio; y >= curAnio - 3; y--) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y === curAnio) opt.selected = true;
+      selAnio.appendChild(opt);
+    }
+  }
+}
+
+function renderCierreMensual() {
+  const mes  = parseInt(document.getElementById('cierrem-mes').value);
+  const anio = parseInt(document.getElementById('cierrem-anio').value);
+  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                 'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  document.getElementById('cierrem-label').textContent = meses[mes] + ' ' + anio;
+
+  const vd = state.ventas.filter(v => {
+    const d = new Date(v.fecha + 'T12:00:00');
+    return d.getMonth() === mes && d.getFullYear() === anio;
+  });
+
+  if (!vd.length) {
+    document.getElementById('cierrem-content').innerHTML =
+      `<div class="card" style="text-align:center;padding:40px;color:var(--muted)">Sin registros para este mes</div>`;
+    return;
+  }
+
+  const totalCortes = vd.reduce((s,v)=>s+v.precio,0);
+  const totalProds  = vd.reduce((s,v)=>s+v.productoPrecio,0);
+  const total       = totalCortes + totalProds;
+  const efectivo    = vd.filter(v=>v.pago==='Efectivo').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+  const transf      = vd.filter(v=>v.pago==='Transferencia').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+  const cntT        = vd.filter(v=>v.pago==='Transferencia').length;
+  const totalComBarberos = vd.reduce((s,v)=>s+v.comisionBarbero+v.productoComisionBarbero,0);
+  const totalBarberia = total - totalComBarberos;
+
+  const rb = state.barberos.map(b => {
+    const vs = vd.filter(v => v.barbero === b.nombre);
+    if (!vs.length) return null;
+    const tcB = vs.reduce((s,v)=>s+v.precio,0);
+    const ccB = vs.reduce((s,v)=>s+v.comisionBarbero,0);
+    const tpB = vs.reduce((s,v)=>s+v.productoPrecio,0);
+    const cpB = vs.reduce((s,v)=>s+v.productoComisionBarbero,0);
+    const recaudado = tcB + tpB;
+    const ganancia  = ccB + cpB;
+    // Agrupar por día
+    const dias = {};
+    vs.forEach(v => { dias[v.fecha] = (dias[v.fecha]||0) + 1; });
+    const diasTrabajados = Object.keys(dias).length;
+    return { ...b, vs, tcB, ccB, tpB, cpB, recaudado, ganancia, diasTrabajados, totalServicios: vs.length };
+  }).filter(Boolean);
+
+  // Días con actividad
+  const diasConActividad = [...new Set(vd.map(v=>v.fecha))].sort();
+
+  document.getElementById('cierrem-content').innerHTML = `
+    <div class="g4" style="margin-bottom:14px">
+      <div class="stat"><div class="sl">💰 Total del Mes</div><div class="sv cg">${fmt(total)}</div><div class="ss">${vd.length} servicios</div></div>
+      <div class="stat"><div class="sl">🏪 Para la Barbería</div><div class="sv cn">${fmt(totalBarberia)}</div><div class="ss">Después de comisiones</div></div>
+      <div class="stat"><div class="sl">💵 Efectivo</div><div class="sv" style="color:var(--green)">${fmt(efectivo)}</div><div class="ss">Total en caja</div></div>
+      <div class="stat"><div class="sl">📲 Transferencias</div><div class="sv cb">${fmt(transf)}</div><div class="ss">${cntT} transf.</div></div>
+    </div>
+
+    <div class="cs">
+      <div class="ch">💼 Resumen del Mes — ${meses[mes]} ${anio}</div>
+      <div class="cb2">
+        <div class="cr2"><span class="label">Servicios facturados</span><span class="value">${fmt(totalCortes)}</span></div>
+        <div class="cr2"><span class="label">Productos vendidos</span><span class="value cp">${fmt(totalProds)}</span></div>
+        <div class="cr2"><span class="label">Total recaudado</span><span class="value cg">${fmt(total)}</span></div>
+        <div class="cr2"><span class="label">Comisiones barberos</span><span class="value cp">${fmt(totalComBarberos)}</span></div>
+        <div class="cr2"><span class="label">GANANCIA BARBERÍA</span><span class="value cn">${fmt(totalBarberia)}</span></div>
+      </div>
+    </div>
+
+    ${rb.map(b=>`
+    <div class="cs">
+      <div class="ch">
+        <span class="badge ${badgeB(b.nombre)}" style="font-size:14px">${b.nombre}</span>
+        — ${b.totalServicios} servicio${b.totalServicios!==1?'s':''}
+        <span style="color:var(--muted);font-size:12px;margin-left:8px">${b.diasTrabajados} día${b.diasTrabajados!==1?'s':''} trabajado${b.diasTrabajados!==1?'s':''}</span>
+      </div>
+      <div class="cb2">
+        <div class="cr2"><span class="label">Total recaudado por ${b.nombre}</span><span class="value cg">${fmt(b.recaudado)}</span></div>
+        <div class="cr2"><span class="label">Servicios (${b.comision}%)</span><span class="value">${fmt(b.tcB)} → comisión ${fmt(b.ccB)}</span></div>
+        ${b.tpB>0?`<div class="cr2"><span class="label">Productos vendidos</span><span class="value cp">${fmt(b.tpB)} → comisión ${fmt(b.cpB)}</span></div>`:''}
+        <div class="cr2" style="border-top:1px solid var(--gold);margin-top:4px;padding-top:10px">
+          <span class="label" style="color:var(--text);font-weight:700">💰 TOTAL A COBRAR — ${b.nombre.toUpperCase()}</span>
+          <span class="value cg" style="font-size:26px">${fmt(b.ganancia)}</span>
+        </div>
+      </div>
+    </div>`).join('')}
+
+    <div class="cs">
+      <div class="ch">📅 Actividad por Día</div>
+      <div class="cb2" style="padding:0">
+        <div class="tw"><table>
+          <thead><tr><th>Fecha</th><th>Servicios</th><th>Recaudado</th><th>Efectivo</th><th>Transferencia</th><th>Para Barbería</th></tr></thead>
+          <tbody>
+            ${diasConActividad.map(fecha => {
+              const vFecha = vd.filter(v=>v.fecha===fecha);
+              const rec = vFecha.reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+              const ef  = vFecha.filter(v=>v.pago==='Efectivo').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+              const tr  = vFecha.filter(v=>v.pago==='Transferencia').reduce((s,v)=>s+v.precio+v.productoPrecio,0);
+              const com = vFecha.reduce((s,v)=>s+v.comisionBarbero+v.productoComisionBarbero,0);
+              const barb = rec - com;
+              return `<tr>
+                <td style="color:var(--muted)">${new Date(fecha+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'})}</td>
+                <td style="text-align:center">${vFecha.length}</td>
+                <td style="font-weight:600">${fmt(rec)}</td>
+                <td style="color:var(--green)">${ef?fmt(ef):'—'}</td>
+                <td style="color:var(--blue)">${tr?fmt(tr):'—'}</td>
+                <td style="color:var(--gold)">${fmt(barb)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table></div>
+      </div>
+    </div>`;
+}
+
+// ════════════════════════════════════════════════
+//  ARRANQUE
+// ════════════════════════════════════════════════
+function startApp(config) {
+  document.getElementById('loading-screen').style.display = 'flex';
+  const ok = initFirebase(config);
+  setTimeout(() => {
+    document.getElementById('loading-screen').style.display = 'none';
+    if (!ok) {
+      document.getElementById('cfg-screen').style.display = 'flex';
+      document.getElementById('cfg-err').textContent = '⚠️ No se pudo conectar. Verificá los datos.';
+      return;
+    }
+    // Verificar si hay sesión guardada
+    const session = localStorage.getItem('bg_session');
+    if (session) {
+      try {
+        currentUser = JSON.parse(session);
+        document.getElementById('app').style.display = 'block';
+        applyRoleUI(); setupListeners(); init();
+        return;
+      } catch(e) {}
+    }
+    document.getElementById('login-screen').style.display = 'flex';
+  }, 1200);
+}
+
+// Auto-arranque
+(function() {
+  const config = getFBConfig();
+  if (config) {
+    document.getElementById('cfg-screen').style.display = 'none';
+    startApp(config);
+  }
+  // Si no hay config, se muestra la pantalla de configuración (ya visible por defecto)
+})();
+</script>
+
+<!--
+════════════════════════════════════════════════════════════
+  INSTRUCCIONES PARA PONER ONLINE EN 10 MINUTOS (GRATIS)
+════════════════════════════════════════════════════════════
+
+PASO 1 — Crear proyecto Firebase (gratis, no necesita tarjeta)
+  1. Ir a https://console.firebase.google.com
+  2. Clic en "Agregar proyecto" → ponerle nombre (ej: barberia-gol)
+  3. Desactivar Google Analytics (no lo necesitamos) → Crear proyecto
+
+PASO 2 — Activar Realtime Database
+  1. En el menú izquierdo: Compilación → Realtime Database
+  2. Clic "Crear base de datos"
+  3. Elegir ubicación: "us-central1" (o cualquiera)
+  4. Seleccionar "Empezar en modo de prueba" → Habilitar
+     ⚠️ Luego cambiar las reglas (ver Paso 5)
+
+PASO 3 — Obtener la configuración
+  1. En el menú izquierdo: ⚙️ Configuración del proyecto
+  2. Bajar hasta "Tus apps" → clic en el ícono web (</>)
+  3. Registrar la app (ponerle cualquier nombre)
+  4. Copiar el objeto "firebaseConfig" que aparece
+
+PASO 4 — Conectar la app
+  Opción A (más fácil): Abrir este archivo en el navegador y pegar
+    los valores en la pantalla de configuración que aparece.
+    
+  Opción B (permanente): Abrir este archivo en un editor de texto,
+    buscar "FIREBASE_CONFIG" al inicio y reemplazar los valores
+    PEGA_TU_xxx_AQUI con los reales.
+
+PASO 5 — Reglas de seguridad (IMPORTANTE)
+  En Firebase Console → Realtime Database → Reglas → pegar esto:
+  
+  {
+    "rules": {
+      ".read": true,
+      ".write": true
+    }
+  }
+  
+  Esto permite acceso libre porque la seguridad la maneja el login
+  de la propia app. (Nivel de seguridad aceptable para uso interno.)
+
+PASO 6 — Subir a Netlify (gratis, sin registro)
+  1. Ir a https://app.netlify.com/drop
+  2. Arrastrar este archivo HTML a la pantalla
+  3. En segundos tenés una URL pública tipo:
+     https://nombre-random.netlify.app
+  
+  Para URL personalizada (ej: barberia.netlify.app):
+  1. Crear cuenta gratis en netlify.com
+  2. Subir el archivo
+  3. Site settings → Change site name → poner el nombre que quieras
+
+════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
