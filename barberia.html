@@ -328,6 +328,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
           <button class="btn bp" style="height:38px" onclick="registrar()">＋ Registrar</button>
         </div>
       </div>
+
+      <!-- VENTA INDIVIDUAL DE PRODUCTO -->
+      <div class="card">
+        <div class="ct">📦 Venta Individual de Producto</div>
+        <div class="fr" style="align-items:end">
+          <div class="fi"><label>Barbero (vendedor)</label><select id="vp-barbero"></select></div>
+          <div class="fi"><label>Producto</label><select id="vp-producto" onchange="onVPProdChange()"></select></div>
+          <div class="fi"><label>Precio ($)</label>
+            <input type="number" id="vp-precio" placeholder="0" readonly
+              style="background:var(--bg);color:var(--purple);border-color:#3a2a5a;cursor:default"/></div>
+          <div class="fi"><label>Método de Pago</label>
+            <select id="vp-pago"><option value="Efectivo">💵 Efectivo</option><option value="Transferencia">📲 Transferencia</option></select></div>
+          <button class="btn bp" style="height:38px" onclick="venderProducto()">＋ Vender</button>
+        </div>
+      </div>
+
       <div class="g4" id="stats-hoy"></div>
       <div class="card">
         <div class="ct fb" style="justify-content:space-between">
@@ -603,6 +619,7 @@ function setupListeners() {
     const v = snap.val();
     state.inventario = v ? Object.values(v) : [];
     populateProductosSelect();
+    populateVPProductosSelect();
     if (currentPage === 'inventario') renderInventario();
   });
   // ventas — escuchamos solo los últimos 500 para performance
@@ -698,8 +715,23 @@ function cambiarPass() {
 // ════════════════════════════════════════════════
 //  UTILS
 // ════════════════════════════════════════════════
-function today()   { return new Date().toISOString().split('T')[0]; }
-function nowTime() { return new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' }); }
+// Zona horaria Argentina (UTC-3) — la fecha del día corre hasta las 23:59 hora local
+function today() {
+  const now = new Date();
+  // Convertir a UTC-3 sumando offset local + (-3*60) minutos = -180
+  const argTime = new Date(now.getTime() + (now.getTimezoneOffset() - 180) * 60000);
+  const y = argTime.getFullYear();
+  const m = String(argTime.getMonth() + 1).padStart(2, '0');
+  const d = String(argTime.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+function nowTime() {
+  const now = new Date();
+  const argTime = new Date(now.getTime() + (now.getTimezoneOffset() - 180) * 60000);
+  const h = String(argTime.getHours()).padStart(2, '0');
+  const m = String(argTime.getMinutes()).padStart(2, '0');
+  return h + ':' + m;
+}
 function fmt(n)    { return '$ ' + Number(n||0).toLocaleString('es-AR', { minimumFractionDigits:0 }); }
 function uid()     { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
@@ -735,8 +767,8 @@ function init() {
 function updateClock() {
   const n = new Date();
   document.getElementById('hd').textContent =
-    n.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short' }) +
-    ' — ' + n.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+    n.toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short', timeZone:'America/Argentina/Buenos_Aires' }) +
+    ' — ' + n.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', timeZone:'America/Argentina/Buenos_Aires' });
 }
 
 // ════════════════════════════════════════════════
@@ -858,10 +890,70 @@ function cancelarRegistro() {
 // ════════════════════════════════════════════════
 function renderRegistro() {
   populateBarberoSelect('sv-barbero');
+  populateBarberoSelect('vp-barbero');
   populateServiciosSelect();
   populateProductosSelect();
+  populateVPProductosSelect();
   renderStatsHoy();
   renderTablaHoy();
+}
+
+// Selects para venta individual de producto
+function populateVPProductosSelect() {
+  const s = document.getElementById('vp-producto'); if(!s) return;
+  const cur = s.value;
+  s.innerHTML = '<option value="">— Elegir producto —</option>' +
+    state.inventario.filter(p => p.stock > 0).map(p =>
+      `<option value="${p.id}">${p.nombre} — ${fmt(p.precio)} (stock ${p.stock})</option>`).join('');
+  if (cur) s.value = cur;
+  onVPProdChange();
+}
+
+function onVPProdChange() {
+  const id = document.getElementById('vp-producto')?.value;
+  const inp = document.getElementById('vp-precio');
+  if (!id) { if(inp) inp.value = ''; return; }
+  const p = state.inventario.find(p => String(p.id) === String(id));
+  if (inp) inp.value = p ? p.precio : '';
+}
+
+function venderProducto() {
+  const barbero = document.getElementById('vp-barbero').value;
+  const prodId  = document.getElementById('vp-producto').value;
+  const pago    = document.getElementById('vp-pago').value;
+  if (!barbero || !prodId) { toast('⚠️ Completá barbero y producto', 1); return; }
+
+  const prod = state.inventario.find(p => String(p.id) === String(prodId));
+  if (!prod) { toast('⚠️ Producto no encontrado', 1); return; }
+  if (prod.stock <= 0) { toast('⚠️ Sin stock', 1); return; }
+
+  // Reducir stock
+  prod.stock--;
+  fbSet('inventario/' + prod.id, prod);
+
+  // Crear venta solo de producto (sin servicio)
+  const venta = {
+    id: Date.now(), fecha: today(), hora: nowTime(),
+    barbero, servicio: '(solo producto)', precio: 0, pago, obs: '',
+    comisionBarbero: 0, comisionLocal: 0,
+    productoId: prod.id, productoNombre: prod.nombre, productoPrecio: prod.precio,
+    productoComisionBarbero: prod.precio * prod.comision / 100,
+    productoComisionLocal:   prod.precio * (100 - prod.comision) / 100,
+    soloProducto: true,
+  };
+
+  // Advertencia doble registro también aplica aquí
+  const ahora = Date.now();
+  if (ultimoRegistro && (ahora - ultimoRegistro) < 30000) {
+    ventaPendiente = venta;
+    document.getElementById('warn-overlay').classList.add('open');
+    return;
+  }
+
+  fbSet('ventas/' + venta.id, venta).then(() => toast('✓ Producto vendido'));
+  ultimoRegistro = Date.now();
+  document.getElementById('vp-producto').value = '';
+  onVPProdChange();
 }
 
 function renderStatsHoy() {
